@@ -165,11 +165,14 @@ void XdrIO::write (const std::string & name)
   // convenient reference to our mesh
   const MeshBase & mesh = MeshOutput<MeshBase>::mesh();
 
-  header_id_type n_elem  = mesh.n_elem();
-  header_id_type n_nodes = mesh.n_nodes();
-
-  libmesh_assert(n_elem == mesh.n_elem());
-  libmesh_assert(n_nodes == mesh.n_nodes());
+  // Note the O(N) counts to get the actual numbers of nodes and
+  // elements written in the case of gaps in numbering.  This should
+  // be replaced once the cached n_elem() and n_nodes() functions are
+  // available.
+  header_id_type n_elem = cast_int<header_id_type>(std::distance(mesh.elements_begin(),
+                                                                 mesh.elements_end()));
+  header_id_type n_nodes = cast_int<header_id_type>(std::distance(mesh.nodes_begin(),
+                                                                  mesh.nodes_end()));
 
   header_id_type n_side_bcs = cast_int<header_id_type>(mesh.get_boundary_info().n_boundary_conds());
   header_id_type n_edge_bcs = cast_int<header_id_type>(mesh.get_boundary_info().n_edge_conds());
@@ -350,7 +353,8 @@ void XdrIO::write_serialized_connectivity (Xdr & io, const dof_id_type libmesh_d
 
   // convenient reference to our mesh
   const MeshBase & mesh = MeshOutput<MeshBase>::mesh();
-  libmesh_assert_equal_to (n_elem, mesh.n_elem());
+  libmesh_assert_equal_to (n_elem, std::distance(mesh.elements_begin(),
+                                                 mesh.elements_end()));
 
   // We will only write active elements and their parents.
   const unsigned int n_active_levels = MeshTools::n_active_levels (mesh);
@@ -706,7 +710,8 @@ void XdrIO::write_serialized_nodes (Xdr & io, const dof_id_type n_nodes) const
 {
   // convenient reference to our mesh
   const MeshBase & mesh = MeshOutput<MeshBase>::mesh();
-  libmesh_assert_equal_to (n_nodes, mesh.n_nodes());
+  libmesh_assert_equal_to (n_nodes, std::distance(mesh.nodes_begin(),
+                                                  mesh.nodes_end()));
 
   std::vector<dof_id_type> xfer_ids;
   std::vector<Real> xfer_coords;
