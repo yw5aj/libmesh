@@ -422,11 +422,10 @@ Elem * DistributedMesh::add_elem (Elem * e)
                                    _max_elem_id);
       libmesh_assert_greater_equal(_next_free_local_elem_id, _max_elem_id);
 
-      // Use the unpartitioned ids for unpartitioned elems,
-      // in serial, and temporarily for ghost elems
+      // Use the unpartitioned ids for unpartitioned elems, and
+      // temporarily for ghost elems
       dof_id_type * next_id = &_next_free_unpartitioned_elem_id;
-      if (elem_procid == this->processor_id() &&
-          !this->is_serial())
+      if (elem_procid == this->processor_id())
         next_id = &_next_free_local_elem_id;
       e->set_id (*next_id);
     }
@@ -621,10 +620,9 @@ Node * DistributedMesh::add_node (Node * n)
       libmesh_assert_greater_equal(_next_free_local_node_id, _max_node_id);
 
       // Use the unpartitioned ids for unpartitioned nodes,
-      // in serial, and temporarily for ghost nodes
+      // and temporarily for ghost nodes
       dof_id_type * next_id = &_next_free_unpartitioned_node_id;
-      if (node_procid == this->processor_id() &&
-          !this->is_serial())
+      if (node_procid == this->processor_id())
         next_id = &_next_free_local_node_id;
       n->set_id (*next_id);
     }
@@ -1371,6 +1369,8 @@ void DistributedMesh::delete_remote_elements()
 #endif
 
   _is_serial = false;
+  _is_serial_on_proc_0 = false;
+
   MeshCommunication().delete_remote_elements(*this, _extra_ghost_elems);
 
   libmesh_assert_equal_to (this->max_elem_id(), this->parallel_max_elem_id());
@@ -1455,6 +1455,15 @@ void DistributedMesh::allgather()
   this->libmesh_assert_valid_parallel_ids();
   this->libmesh_assert_valid_parallel_flags();
 #endif
+}
+
+void DistributedMesh::gather_to_zero()
+{
+  if (_is_serial_on_proc_0)
+    return;
+
+  _is_serial_on_proc_0 = true;
+  MeshCommunication().gather(0, *this);
 }
 
 

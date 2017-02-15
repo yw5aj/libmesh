@@ -55,10 +55,17 @@ BoundaryInfo::BoundaryInfo(MeshBase & m) :
 
 BoundaryInfo & BoundaryInfo::operator=(const BoundaryInfo & other_boundary_info)
 {
+  // Overwrite any preexisting boundary info
+  this->clear();
+
   /**
-   * A quick note: We're going to attempt to pull _new_ pointers out of the mesh assigned to this boundary info.
-   * This will only work if the mesh assigned to this BoundaryInfo is the same mesh object as other_boundary_info
-   * _or_ was constructed in exactly the same way (or constructed as a copy).
+   * We're going to attempt to pull _new_ pointers out of the mesh
+   * assigned to this boundary info.
+   *
+   * This will only work if the mesh assigned to this BoundaryInfo is
+   * the same mesh object as other_boundary_info _or_ was constructed
+   * in exactly the same way (or constructed as a copy, or a refined
+   * copy without renumbering, etc.).
    */
 
   // Copy node boundary info
@@ -214,7 +221,7 @@ void BoundaryInfo::sync (const std::set<boundary_id_type> & requested_boundary_i
           // Copy over all the node's boundary IDs to boundary_mesh
           std::vector<boundary_id_type> node_boundary_ids;
           this->boundary_ids(node, node_boundary_ids);
-          for (unsigned int index=0; index<node_boundary_ids.size(); index++)
+          for (std::size_t index=0; index<node_boundary_ids.size(); index++)
             {
               boundary_mesh.boundary_info->add_node(node_id_map[node_id],
                                                     node_boundary_ids[index]);

@@ -136,10 +136,23 @@ public:
   { return true; }
 
   /**
+   * @returns \p true if new elements and nodes can and should be
+   * created in synchronization on all processors, \p false otherwise
+   */
+  virtual bool is_replicated () const
+  { return true; }
+
+  /**
    * Gathers all elements and nodes of the mesh onto
    * every processor
    */
   virtual void allgather () {}
+
+  /**
+   * Gathers all elements and nodes of the mesh onto
+   * processor zero
+   */
+  virtual void gather_to_zero() {}
 
   /**
    * When supported, deletes all nonlocal elements of the mesh

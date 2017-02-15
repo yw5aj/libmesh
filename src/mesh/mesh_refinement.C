@@ -121,9 +121,16 @@ Node * MeshRefinement::add_node(Elem & parent,
   const dof_id_type new_node_id =
     _new_nodes_map.find(bracketing_nodes);
 
-  // Return the node if it already exists
+  // Return the node if it already exists, but first update the
+  // processor_id if the node is now going to be attached to the
+  // element of a processor which may take ownership of it.
   if (new_node_id != DofObject::invalid_id)
-    return _mesh.node_ptr(new_node_id);
+    {
+      Node *node = _mesh.node_ptr(new_node_id);
+      if (proc_id < node->processor_id())
+        node->processor_id() = proc_id;
+      return node;
+    }
 
   // Otherwise we need to add a new node, with a default id and the
   // requested processor_id.  Figure out where to add the point:
@@ -1377,16 +1384,38 @@ bool MeshRefinement::_coarsen_elements ()
   // any iterators currently in this data structure.
   // _unused_elements.clear();
 
-  MeshBase::element_iterator       it  = _mesh.elements_begin();
-  const MeshBase::element_iterator end = _mesh.elements_end();
-
-  // Loop over the elements.
-  for ( ; it != end; ++it)
+  // Loop over the elements first to determine if the mesh will
+  // undergo h-coarsening.  If it will, then we'll need to communicate
+  // more ghosted elements.  We need to communicate them *before* we
+  // do the coarsening; otherwise it is possible to coarsen away a
+  // one-element-thick layer partition and leave the partitions on
+  // either side unable to figure out how to talk to each other.
+  for (MeshBase::element_iterator
+         it  = _mesh.elements_begin(),
+         end = _mesh.elements_end();
+       it != end; ++it)
     {
       Elem * elem = *it;
+      if (elem->refinement_flag() == Elem::COARSEN)
+        {
+          mesh_changed = true;
+          break;
+        }
+    }
 
-      // Not necessary when using elem_iterator
-      // libmesh_assert(elem);
+  // If the mesh changed on any processor, it changed globally
+  this->comm().max(mesh_changed);
+
+  // And then we may need to widen the ghosting layers.
+  if (mesh_changed)
+    MeshCommunication().send_coarse_ghosts(_mesh);
+
+  for (MeshBase::element_iterator
+         it  = _mesh.elements_begin(),
+         end = _mesh.elements_end();
+       it != end; ++it)
+    {
+      Elem * elem = *it;
 
       // active elements flagged for coarsening will
       // no longer be deleted until MeshRefinement::contract()
@@ -1412,9 +1441,6 @@ bool MeshRefinement::_coarsen_elements ()
           // Don't delete the element until
           // MeshRefinement::contract()
           // _mesh.delete_elem(elem);
-
-          // the mesh has certainly changed
-          mesh_changed = true;
         }
 
       // inactive elements flagged for coarsening
@@ -1442,8 +1468,6 @@ bool MeshRefinement::_coarsen_elements ()
         }
     }
 
-  // If the mesh changed on any processor, it changed globally
-  this->comm().max(mesh_changed);
   this->comm().max(mesh_p_changed);
 
   // And we may need to update DistributedMesh values reflecting the changes
@@ -1515,19 +1539,74 @@ bool MeshRefinement::_refine_elements ()
   // levels on a distributed mesh.
   bool mesh_p_changed = false;
 
-  // Iterate over the elements, looking for elements
-  // flagged for refinement.
-  for (it = _mesh.elements_begin(); it != end; ++it)
+  // Iterate over the elements, looking for elements flagged for
+  // refinement.
+
+  // If we are on a ReplicatedMesh, then we just do the refinement in
+  // the same order on every processor and everything stays in sync.
+
+  // If we are on a DistributedMesh, that's impossible.
+  //
+  // If the mesh is distributed, we need to make sure that if we end
+  // up as the owner of a new node, which might happen if that node is
+  // attached to one of our own elements, then we have given it a
+  // legitimate node id and our own processor id.  We generate
+  // legitimate node ids and use our own processor id when we are
+  // refining our own elements but not when we refine others'
+  // elements.  Therefore we want to refine our own elements *first*,
+  // thereby generating all nodes which might belong to us, and then
+  // refine others' elements *after*, thereby generating nodes with
+  // temporary ids which we know we will discard.
+  //
+  // Even if the DistributedMesh is serialized, we can't just treat it
+  // like a ReplicatedMesh, because DistributedMesh doesn't *trust*
+  // users to refine partitioned elements in a serialized way, so it
+  // assigns temporary ids, so we need to synchronize ids afterward to
+  // be safe anyway, so we might as well use the distributed mesh code
+  // path.
+  {
+    MeshBase::element_iterator
+      elem_it  = _mesh.active_local_elements_begin(),
+      elem_end = _mesh.active_local_elements_end();
+
+    if (_mesh.is_replicated())
+      {
+        elem_it  = _mesh.active_elements_begin();
+        elem_end = _mesh.active_elements_end();
+      }
+
+    for (; elem_it != elem_end; ++elem_it)
+      {
+        Elem * elem = *elem_it;
+        if (elem->refinement_flag() == Elem::REFINE)
+          local_copy_of_elements.push_back(elem);
+        if (elem->p_refinement_flag() == Elem::REFINE &&
+            elem->active())
+          {
+            elem->set_p_level(elem->p_level()+1);
+            elem->set_p_refinement_flag(Elem::JUST_REFINED);
+            mesh_p_changed = true;
+          }
+      }
+  }
+
+  if (!_mesh.is_replicated())
     {
-      Elem * elem = *it;
-      if (elem->refinement_flag() == Elem::REFINE)
-        local_copy_of_elements.push_back(elem);
-      if (elem->p_refinement_flag() == Elem::REFINE &&
-          elem->active())
+      for (MeshBase::element_iterator
+             elem_it = _mesh.active_not_local_elements_begin(),
+             elem_end = _mesh.active_not_local_elements_end();
+           elem_it != elem_end; ++elem_it)
         {
-          elem->set_p_level(elem->p_level()+1);
-          elem->set_p_refinement_flag(Elem::JUST_REFINED);
-          mesh_p_changed = true;
+          Elem * elem = *elem_it;
+          if (elem->refinement_flag() == Elem::REFINE)
+            local_copy_of_elements.push_back(elem);
+          if (elem->p_refinement_flag() == Elem::REFINE &&
+              elem->active())
+            {
+              elem->set_p_level(elem->p_level()+1);
+              elem->set_p_refinement_flag(Elem::JUST_REFINED);
+              mesh_p_changed = true;
+            }
         }
     }
 
@@ -1549,7 +1628,7 @@ bool MeshRefinement::_refine_elements ()
   if (mesh_changed)
     _mesh.update_parallel_id_counts();
 
-  if (mesh_changed && !_mesh.is_serial())
+  if (mesh_changed && !_mesh.is_replicated())
     {
       MeshCommunication().make_elems_parallel_consistent (_mesh);
       MeshCommunication().make_new_nodes_parallel_consistent (_mesh);
@@ -1558,7 +1637,7 @@ bool MeshRefinement::_refine_elements ()
 #endif
     }
 
-  if (mesh_p_changed && !_mesh.is_serial())
+  if (mesh_p_changed && !_mesh.is_replicated())
     {
       MeshCommunication().make_p_levels_parallel_consistent (_mesh);
     }

@@ -646,12 +646,20 @@ void UnstructuredMesh::all_second_order (const bool full_ordered)
 
               new_location /= static_cast<Real>(n_adjacent_vertices);
 
-              /* Add the new point to the mesh, giving it a globally
-               * well-defined processor id.
+              /* Add the new point to the mesh.
+               * If we are on a serialized mesh, then we're doing this
+               * all in sync, and the node processor_id will be
+               * consistent between processors.
+               * If we are on a distributed mesh, we can fix
+               * inconsistent processor ids later, but only if every
+               * processor gives new nodes a *locally* consistent
+               * processor id, so we'll give the new node the
+               * processor id of an adjacent element for now and then
+               * we'll update that later if appropriate.
                */
               Node * so_node = this->add_point
                 (new_location, DofObject::invalid_id,
-                 this->node_ref(adjacent_vertices_ids[0]).processor_id());
+                 lo_elem->processor_id());
 
               /*
                * insert the new node with its defining vertex
@@ -668,9 +676,15 @@ void UnstructuredMesh::all_second_order (const bool full_ordered)
           // yes, already added.
           else
             {
-              libmesh_assert(pos.first->second);
+              Node *so_node = pos.first->second;
+              libmesh_assert(so_node);
 
-              so_elem->set_node(son) = pos.first->second;
+              so_elem->set_node(son) = so_node;
+
+              // We need to ensure that the processor who should own a
+              // node *knows* they own the node.
+              if (so_node->processor_id() > lo_elem->processor_id())
+                so_node->processor_id() = lo_elem->processor_id();
             }
         }
 
@@ -721,9 +735,9 @@ void UnstructuredMesh::all_second_order (const bool full_ordered)
   // In a DistributedMesh our ghost node processor ids may be bad,
   // the ids of nodes touching remote elements may be inconsistent,
   // and unique_ids of newly added non-local nodes remain unset.
-  // make_new_nodes_parallel_consistent() will fix all this.
+  // make_nodes_parallel_consistent() will fix all this.
   if (!this->is_serial())
-    MeshCommunication().make_new_nodes_parallel_consistent (*this);
+    MeshCommunication().make_nodes_parallel_consistent (*this);
 
   // renumber nodes, elements etc
   this->prepare_for_use(/*skip_renumber =*/ false);
@@ -1435,7 +1449,7 @@ void MeshTools::Modification::all_tri (MeshBase & mesh)
                     // Make a sorted list of node ids for elem->side(sn)
                     UniquePtr<Elem> elem_side = elem->build_side_ptr(sn);
                     std::vector<dof_id_type> elem_side_nodes(elem_side->n_nodes());
-                    for (unsigned int esn=0; esn<elem_side_nodes.size(); ++esn)
+                    for (std::size_t esn=0; esn<elem_side_nodes.size(); ++esn)
                       elem_side_nodes[esn] = elem_side->node_id(esn);
                     std::sort(elem_side_nodes.begin(), elem_side_nodes.end());
 
@@ -1453,7 +1467,7 @@ void MeshTools::Modification::all_tri (MeshBase & mesh)
                               // a Hex20 or Prism15's QUAD8 face may be split into two Tri6 faces, and the
                               // original face will not contain the mid-edge node.
                               std::vector<dof_id_type> subside_nodes(subside_elem->n_vertices());
-                              for (unsigned int ssn=0; ssn<subside_nodes.size(); ++ssn)
+                              for (std::size_t ssn=0; ssn<subside_nodes.size(); ++ssn)
                                 subside_nodes[ssn] = subside_elem->node_id(ssn);
                               std::sort(subside_nodes.begin(), subside_nodes.end());
 
@@ -1545,7 +1559,7 @@ void MeshTools::Modification::all_tri (MeshBase & mesh)
       libmesh_assert_equal_to (new_bndry_sides.size(), new_bndry_ids.size());
 
       // Add the new boundary info to the mesh
-      for (unsigned int s=0; s<new_bndry_elements.size(); ++s)
+      for (std::size_t s=0; s<new_bndry_elements.size(); ++s)
         mesh.get_boundary_info().add_side(new_bndry_elements[s],
                                           new_bndry_sides[s],
                                           new_bndry_ids[s]);
@@ -1880,7 +1894,7 @@ void MeshTools::Modification::flatten(MeshBase & mesh)
   }
 
   // Finally, also add back the saved boundary information
-  for (unsigned int e=0; e<saved_boundary_elements.size(); ++e)
+  for (std::size_t e=0; e<saved_boundary_elements.size(); ++e)
     mesh.get_boundary_info().add_side(saved_boundary_elements[e],
                                       saved_bc_sides[e],
                                       saved_bc_ids[e]);
@@ -1915,7 +1929,7 @@ void MeshTools::Modification::change_boundary_id (MeshBase & mesh,
     std::vector<boundary_id_type> bndry_ids;
 
     // For each node with the old_id...
-    for (unsigned idx=0; idx<node_list.size(); ++idx)
+    for (std::size_t idx=0; idx<node_list.size(); ++idx)
       if (bc_id_list[idx] == old_id)
         {
           // Get the node in question
@@ -1946,7 +1960,7 @@ void MeshTools::Modification::change_boundary_id (MeshBase & mesh,
     std::vector<boundary_id_type> bndry_ids;
 
     // For each edge with the old_id...
-    for (unsigned idx=0; idx<elem_list.size(); ++idx)
+    for (std::size_t idx=0; idx<elem_list.size(); ++idx)
       if (bc_id_list[idx] == old_id)
         {
           // Get the elem in question
@@ -1980,7 +1994,7 @@ void MeshTools::Modification::change_boundary_id (MeshBase & mesh,
     std::vector<boundary_id_type> bndry_ids;
 
     // For each shellface with the old_id...
-    for (unsigned idx=0; idx<elem_list.size(); ++idx)
+    for (std::size_t idx=0; idx<elem_list.size(); ++idx)
       if (bc_id_list[idx] == old_id)
         {
           // Get the elem in question
@@ -2014,7 +2028,7 @@ void MeshTools::Modification::change_boundary_id (MeshBase & mesh,
     std::vector<boundary_id_type> bndry_ids;
 
     // For each side with the old_id...
-    for (unsigned idx=0; idx<elem_list.size(); ++idx)
+    for (std::size_t idx=0; idx<elem_list.size(); ++idx)
       if (bc_id_list[idx] == old_id)
         {
           // Get the elem in question

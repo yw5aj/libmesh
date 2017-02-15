@@ -581,15 +581,15 @@ dof_id_type MeshTools::n_non_subactive_elem_of_type_at_level(const MeshBase & me
 
 unsigned int MeshTools::n_active_local_levels(const MeshBase & mesh)
 {
-  unsigned int max_level = 0;
+  unsigned int nl = 0;
 
   MeshBase::const_element_iterator el = mesh.active_local_elements_begin();
   const MeshBase::const_element_iterator end_el = mesh.active_local_elements_end();
 
   for( ; el != end_el; ++el)
-    max_level = std::max((*el)->level(), max_level);
+    nl = std::max((*el)->level() + 1, nl);
 
-  return max_level + 1;
+  return nl;
 }
 
 
@@ -617,15 +617,15 @@ unsigned int MeshTools::n_active_levels(const MeshBase & mesh)
 
 unsigned int MeshTools::n_local_levels(const MeshBase & mesh)
 {
-  unsigned int max_level = 0;
+  unsigned int nl = 0;
 
   MeshBase::const_element_iterator el = mesh.local_elements_begin();
   const MeshBase::const_element_iterator end_el = mesh.local_elements_end();
 
   for( ; el != end_el; ++el)
-    max_level = std::max((*el)->level(), max_level);
+    nl = std::max((*el)->level() + 1, nl);
 
-  return max_level + 1;
+  return nl;
 }
 
 
@@ -641,6 +641,33 @@ unsigned int MeshTools::n_levels(const MeshBase & mesh)
   const MeshBase::const_element_iterator end_el =
     mesh.unpartitioned_elements_end();
 
+  for( ; el != end_el; ++el)
+    nl = std::max((*el)->level() + 1, nl);
+
+  mesh.comm().max(nl);
+
+  // n_levels() is only valid and should only be called in cases where
+  // the mesh is validly distributed (or serialized).  Let's run an
+  // expensive test in debug mode to make sure this is such a case.
+#ifdef DEBUG
+  const unsigned int paranoid_nl = MeshTools::paranoid_n_levels(mesh);
+  libmesh_assert_equal_to(nl, paranoid_nl);
+#endif
+  return nl;
+}
+
+
+
+unsigned int MeshTools::paranoid_n_levels(const MeshBase & mesh)
+{
+  libmesh_parallel_only(mesh.comm());
+
+  MeshBase::const_element_iterator el =
+    mesh.elements_begin();
+  const MeshBase::const_element_iterator end_el =
+    mesh.elements_end();
+
+  unsigned int nl = 0;
   for( ; el != end_el; ++el)
     nl = std::max((*el)->level() + 1, nl);
 

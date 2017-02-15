@@ -34,6 +34,8 @@
 #include "libmesh/numeric_vector.h"
 #include "libmesh/exodusII_io_helper.h"
 #include "libmesh/string_to_enum.h"
+#include "libmesh/mesh_communication.h"
+#include "libmesh/parallel_mesh.h"
 
 namespace libMesh
 {
@@ -48,7 +50,9 @@ ExodusII_IO::ExodusII_IO (MeshBase & mesh,
 #endif
                           ) :
   MeshInput<MeshBase> (mesh),
-  MeshOutput<MeshBase> (mesh),
+  MeshOutput<MeshBase> (mesh,
+                        /* is_parallel_format = */ false,
+                        /* serial_only_needed_on_proc_0 = */ true),
   ParallelObject(mesh),
 #ifdef LIBMESH_HAVE_EXODUS_API
   exio_helper(new ExodusII_IO_Helper(*this, false, true, single_precision)),
@@ -292,7 +296,7 @@ void ExodusII_IO::read (const std::string & fname)
             = sideset_name;
       }
 
-    for (unsigned int e=0; e<exio_helper->elem_list.size(); e++)
+    for (std::size_t e=0; e<exio_helper->elem_list.size(); e++)
       {
         // The numbers in the Exodus file sidesets should be thought
         // of as (1-based) indices into the elem_num_map array.  So,
@@ -365,7 +369,7 @@ void ExodusII_IO::read (const std::string & fname)
 
         exio_helper->read_nodeset(nodeset);
 
-        for (unsigned int node=0; node<exio_helper->node_list.size(); node++)
+        for (std::size_t node=0; node<exio_helper->node_list.size(); node++)
           {
             // As before, the entries in 'node_list' are 1-based
             // indcies into the node_num_map array, so we have to map
@@ -462,7 +466,7 @@ void ExodusII_IO::copy_nodal_solution(System & system,
 
   const unsigned int var_num = system.variable_number(system_var_name);
 
-  for (unsigned int i=0; i<exio_helper->nodal_var_values.size(); ++i)
+  for (std::size_t i=0; i<exio_helper->nodal_var_values.size(); ++i)
     {
       const Node & node = MeshInput<MeshBase>::mesh().node_ref(i);
 
@@ -543,7 +547,8 @@ void ExodusII_IO::write_element_data (const EquationSystems & es)
   // ExodusII_IO::write_element_data() when the underlying Mesh is a
   // DistributedMesh will result in an unnecessary additional
   // serialization/re-parallelization step.
-  MeshSerializer serialize(MeshInput<MeshBase>::mesh(), !MeshOutput<MeshBase>::_is_parallel_format);
+  // The "true" specifies that we only need the mesh serialized to processor 0
+  MeshSerializer serialize(MeshInput<MeshBase>::mesh(), !MeshOutput<MeshBase>::_is_parallel_format, true);
 
   // To be (possibly) filled with a filtered list of variable names to output.
   std::vector<std::string> names;
@@ -813,7 +818,8 @@ void ExodusII_IO::write (const std::string & fname)
 
   // We may need to gather a DistributedMesh to output it, making that
   // const qualifier in our constructor a dirty lie
-  MeshSerializer serialize(const_cast<MeshBase &>(mesh), !MeshOutput<MeshBase>::_is_parallel_format);
+  // The "true" specifies that we only need the mesh serialized to processor 0
+  MeshSerializer serialize(MeshInput<MeshBase>::mesh(), !MeshOutput<MeshBase>::_is_parallel_format, true);
 
   libmesh_assert( !exio_helper->opened_for_writing );
 
@@ -832,9 +838,6 @@ void ExodusII_IO::write (const std::string & fname)
   exio_helper->write_elements(mesh);
   exio_helper->write_sidesets(mesh);
   exio_helper->write_nodesets(mesh);
-
-  if(MeshOutput<MeshBase>::mesh().processor_id())
-    return;
 
   if( (mesh.get_boundary_info().n_edge_conds() > 0) &&
       _verbose )
