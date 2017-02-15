@@ -728,44 +728,39 @@ void XdrIO::write_serialized_nodes (Xdr & io, const dof_id_type n_nodes) const
 
   std::size_t n_written=0;
 
-  {
-  MeshBase::const_node_iterator
-    it  = mesh.local_nodes_begin(),
-    end = mesh.local_nodes_end();
-
-  // We want to write up to n_nodes entries in io_blksize chunks.
-  std::size_t num_blks =
-    std::ceil(static_cast<double>(n_nodes)/
-              static_cast<double>(io_blksize));
-
-  for (std::size_t blk=0; blk<num_blks; blk++)
+  for (std::size_t blk=0, last_node=0; last_node<n_nodes; blk++)
     {
       const std::size_t first_node = blk*io_blksize;
+      last_node = std::min((blk+1)*io_blksize, std::size_t(n_nodes));
 
       // Build up the xfer buffers on each processor
+      MeshBase::const_node_iterator
+        it  = mesh.local_nodes_begin(),
+        end = mesh.local_nodes_end();
+
       xfer_ids.clear();
       xfer_coords.clear();
 #ifdef LIBMESH_ENABLE_UNIQUE_ID
       xfer_unique_ids.clear();
 #endif // LIBMESH_ENABLE_UNIQUE_ID
 
-      // We only want to write up to io_blksize entries to the
-      // transfer buffers.  "it" will be used again for the next blk.
-      for (std::size_t count=0; count<io_blksize && it != end; ++it, ++count)
-        {
-          xfer_ids.push_back((*it)->id());
+      for (; it!=end; ++it)
+        if (((*it)->id() >= first_node) && // node in [first_node, last_node)
+            ((*it)->id() <  last_node))
+          {
+            xfer_ids.push_back((*it)->id());
 #ifdef LIBMESH_ENABLE_UNIQUE_ID
-          xfer_unique_ids.push_back((*it)->unique_id());
+            xfer_unique_ids.push_back((*it)->unique_id());
 #endif // LIBMESH_ENABLE_UNIQUE_ID
-          const Point & p = **it;
-          xfer_coords.push_back(p(0));
+            const Point & p = **it;
+            xfer_coords.push_back(p(0));
 #if LIBMESH_DIM > 1
-          xfer_coords.push_back(p(1));
+            xfer_coords.push_back(p(1));
 #endif
 #if LIBMESH_DIM > 2
-          xfer_coords.push_back(p(2));
+            xfer_coords.push_back(p(2));
 #endif
-        }
+          }
 
       //-------------------------------------
       // Send the xfer buffers to processor 0
@@ -905,7 +900,6 @@ void XdrIO::write_serialized_nodes (Xdr & io, const dof_id_type n_nodes) const
                           cast_int<unsigned int>(coords.size()), 3);
         }
     }
-  } // end scope for blk loop
 
   if (this->processor_id() == 0)
     libmesh_assert_equal_to (n_written, n_nodes);
