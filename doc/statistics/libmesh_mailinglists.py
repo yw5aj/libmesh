@@ -85,6 +85,7 @@ membership_data = [
     'Dec 2016', 116, 246,
     'Jan 2017', 117, 247,
     'Feb 2017', 117, 249,
+    'Mar 2017', 117, 250,
 ]
 
 # Strip out the dates from membership_data
@@ -156,7 +157,7 @@ devel_data = [
     '2014',   47,  62,  27,   8,  12,   2,  22,  22,   0,  17,  20,  12,
     '2015',   25,   2,  16,  13,  21,   5,   1,   8,   9,  30,   8,   0,
     '2016',   16,  31,  43,  18,  21,  11,  17,  26,   4,  16,   5,   6,
-    '2017',    0,
+    '2017',    1,   2,
 ]
 
 # libmesh-users starts in Sept 2003!
@@ -177,7 +178,7 @@ users_data = [
     '2014',   38,  45,  26,  41, 125,  70,  61,  66,  60, 110,  27,  30,
     '2015',   43,  67,  71,  92,  39,  15,  46,  63,  84,  82,  69,  45,
     '2016',   92,  91, 148,  43,  58, 117,  92, 140,  49,  33,  85,  40,
-    '2017',   41,
+    '2017',   41,  36,
 ]
 
 # Make plot of monthly data
@@ -266,11 +267,17 @@ ax.bar(x, combined_devel_users_number, width, color='c', label='libmesh-users')
 # Plot the libmesh-devel data alone
 ax.bar(x, devel_numbers, width, color='b', label='libmesh-devel')
 
-# Set the xticks and xticklabels
-xticks = [1, 25, 49, 73, 97, 121, 145]
+# Set bi-yearly xticklabels
+ax.set_xticklabels(['2003', '2005', '2007', '2009', '2011', '2013', '2015', '2017'])
+
+# Set up the corresponding tick locations
+xticks = [1]
+for i in xrange(1,len(ax.get_xticklabels())):
+  xticks.append(xticks[i-1] + 24)
+
+# Center the ticks slightly
 xticks = [x+width/2. for x in xticks]
 ax.set_xticks(xticks)
-ax.set_xticklabels(['2003', '2005', '2007', '2009', '2011', '2013', '2015'])
 
 # Add a legend to the plot.
 plt.legend(loc='upper left')

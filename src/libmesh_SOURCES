@@ -179,6 +179,7 @@ libmesh_SOURCES =  \
         src/mesh/abaqus_io.C \
         src/mesh/boundary_info.C \
         src/mesh/boundary_mesh.C \
+        src/mesh/bounding_box.C \
         src/mesh/checkpoint_io.C \
         src/mesh/distributed_mesh.C \
         src/mesh/ensight_io.C \
@@ -194,10 +195,6 @@ libmesh_SOURCES =  \
         src/mesh/mesh_base.C \
         src/mesh/mesh_communication.C \
         src/mesh/mesh_communication_global_indices.C \
-        src/mesh/mesh_data.C \
-        src/mesh/mesh_data_tetgen_support.C \
-        src/mesh/mesh_data_unv_support.C \
-        src/mesh/mesh_data_xdr_support.C \
         src/mesh/mesh_function.C \
         src/mesh/mesh_generation.C \
         src/mesh/mesh_iterators.C \

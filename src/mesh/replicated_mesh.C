@@ -136,6 +136,7 @@ ReplicatedMesh::ReplicatedMesh (const Parallel::Communicator & comm_in,
 ReplicatedMesh::ReplicatedMesh (unsigned char d) :
   UnstructuredMesh (d)
 {
+  libmesh_deprecated();
 #ifdef LIBMESH_ENABLE_UNIQUE_ID
   // In serial we just need to reset the next unique id to zero
   // here in the constructor.
@@ -1466,6 +1467,11 @@ void ReplicatedMesh::stitching_helper (ReplicatedMesh * other_mesh,
                 }
             }
         }
+
+      // Removing stitched-away boundary ids might have removed an id
+      // *entirely*, so we need to recompute boundary id sets to check
+      // for that.
+      this->get_boundary_info().regenerate_id_sets();
     }
 }
 

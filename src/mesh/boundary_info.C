@@ -27,7 +27,6 @@
 #include "libmesh/distributed_mesh.h"
 #include "libmesh/elem.h"
 #include "libmesh/mesh_communication.h"
-#include "libmesh/mesh_data.h"
 #include "libmesh/mesh_serializer.h"
 #include "libmesh/parallel.h"
 #include "libmesh/partitioner.h"
@@ -152,9 +151,56 @@ void BoundaryInfo::clear()
 
 
 
-void BoundaryInfo::sync (UnstructuredMesh & boundary_mesh,
-                         MeshData *     boundary_mesh_data,
-                         MeshData *     this_mesh_data)
+void BoundaryInfo::regenerate_id_sets()
+{
+  // Clear the old caches
+  _boundary_ids.clear();
+  _side_boundary_ids.clear();
+  _node_boundary_ids.clear();
+  _edge_boundary_ids.clear();
+  _shellface_boundary_ids.clear();
+
+  // Loop over id maps to regenerate each set.
+  for (boundary_node_iter it = _boundary_node_id.begin(),
+         end = _boundary_node_id.end();
+       it != end; ++it)
+    {
+      const boundary_id_type id = it->second;
+      _boundary_ids.insert(id);
+      _node_boundary_ids.insert(id);
+    }
+
+  for (boundary_edge_iter it = _boundary_edge_id.begin(),
+         end = _boundary_edge_id.end();
+       it != end; ++it)
+    {
+      const boundary_id_type id = it->second.second;
+      _boundary_ids.insert(id);
+      _edge_boundary_ids.insert(id);
+    }
+
+  for (boundary_side_iter it = _boundary_side_id.begin(),
+         end = _boundary_side_id.end();
+       it != end; ++it)
+    {
+      const boundary_id_type id = it->second.second;
+      _boundary_ids.insert(id);
+      _side_boundary_ids.insert(id);
+    }
+
+  for (boundary_shellface_iter it = _boundary_shellface_id.begin(),
+         end = _boundary_shellface_id.end();
+       it != end; ++it)
+    {
+      const boundary_id_type id = it->second.second;
+      _boundary_ids.insert(id);
+      _shellface_boundary_ids.insert(id);
+    }
+}
+
+
+
+void BoundaryInfo::sync (UnstructuredMesh & boundary_mesh)
 {
   std::set<boundary_id_type> request_boundary_ids(_boundary_ids);
   request_boundary_ids.insert(invalid_id);
@@ -162,16 +208,12 @@ void BoundaryInfo::sync (UnstructuredMesh & boundary_mesh,
     this->comm().set_union(request_boundary_ids);
 
   this->sync(request_boundary_ids,
-             boundary_mesh,
-             boundary_mesh_data,
-             this_mesh_data);
+             boundary_mesh);
 }
 
 
 void BoundaryInfo::sync (const std::set<boundary_id_type> & requested_boundary_ids,
-                         UnstructuredMesh & boundary_mesh,
-                         MeshData *     boundary_mesh_data,
-                         MeshData *     this_mesh_data)
+                         UnstructuredMesh & boundary_mesh)
 {
   LOG_SCOPE("sync()", "BoundaryInfo");
 
@@ -263,11 +305,6 @@ void BoundaryInfo::sync (const std::set<boundary_id_type> & requested_boundary_i
           new_elem->set_node(nn) = new_node;
         }
     }
-
-  // When desired, copy the MeshData
-  // to the boundary_mesh
-  if ((boundary_mesh_data != libmesh_nullptr) && (this_mesh_data != libmesh_nullptr))
-    boundary_mesh_data->assign(*this_mesh_data);
 
   // Don't repartition this mesh; we want it to stay in sync with the
   // interior partitioning.

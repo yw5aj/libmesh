@@ -237,80 +237,6 @@ void assert_semiverify_dofobj(const Parallel::Communicator & communicator,
 
 namespace libMesh
 {
-// Small helper function to make intersect more readable.
-bool is_between(Real min, Real check, Real max)
-{
-  return min <= check && check <= max;
-}
-
-bool MeshTools::BoundingBox::intersect (const BoundingBox & other_box) const
-{
-  // Make local variables first to make thiings more clear in a moment
-  const Real & my_min_x = this->first(0);
-  const Real & my_max_x = this->second(0);
-  const Real & other_min_x = other_box.first(0);
-  const Real & other_max_x = other_box.second(0);
-
-  const bool x_int = is_between(my_min_x, other_min_x, my_max_x) || is_between(my_min_x, other_max_x, my_max_x) ||
-    is_between(other_min_x, my_min_x, other_max_x) || is_between(other_min_x, my_max_x, other_max_x);
-
-  bool intersection_true = x_int;
-
-#if LIBMESH_DIM > 1
-  const Real & my_min_y = this->first(1);
-  const Real & my_max_y = this->second(1);
-  const Real & other_min_y = other_box.first(1);
-  const Real & other_max_y = other_box.second(1);
-
-  const bool y_int = is_between(my_min_y, other_min_y, my_max_y) || is_between(my_min_y, other_max_y, my_max_y) ||
-    is_between(other_min_y, my_min_y, other_max_y) || is_between(other_min_y, my_max_y, other_max_y);
-
-  intersection_true = intersection_true && y_int;
-#endif
-
-#if LIBMESH_DIM > 2
-  const Real & my_min_z = this->first(2);
-  const Real & my_max_z = this->second(2);
-  const Real & other_min_z = other_box.first(2);
-  const Real & other_max_z = other_box.second(2);
-
-  const bool z_int = is_between(my_min_z, other_min_z, my_max_z) || is_between(my_min_z, other_max_z, my_max_z) ||
-    is_between(other_min_z, my_min_z, other_max_z) || is_between(other_min_z, my_max_z, other_max_z);
-
-  intersection_true = intersection_true && z_int;
-#endif
-
-  return intersection_true;
-}
-
-bool MeshTools::BoundingBox::contains_point (const Point & p) const
-{
-  // Make local variables first to make thiings more clear in a moment
-  Real my_min_x = this->first(0);
-  Real my_max_x = this->second(0);
-  bool x_int = is_between(my_min_x, p(0), my_max_x);
-
-  bool intersection_true = x_int;
-
-#if LIBMESH_DIM > 1
-  Real my_min_y = this->first(1);
-  Real my_max_y = this->second(1);
-  bool y_int = is_between(my_min_y, p(1), my_max_y);
-
-  intersection_true = intersection_true && y_int;
-#endif
-
-
-#if LIBMESH_DIM > 2
-  Real my_min_z = this->first(2);
-  Real my_max_z = this->second(2);
-  bool z_int = is_between(my_min_z, p(2), my_max_z);
-
-  intersection_true = intersection_true && z_int;
-#endif
-
-  return intersection_true;
-}
 
 // ------------------------------------------------------------
 // MeshTools functions
@@ -1662,8 +1588,11 @@ void MeshTools::libmesh_assert_valid_refinement_flags(const MeshBase & mesh)
   if (mesh.n_processors() == 1)
     return;
 
-  std::vector<unsigned char> my_elem_h_state(mesh.max_elem_id(), 255);
-  std::vector<unsigned char> my_elem_p_state(mesh.max_elem_id(), 255);
+  dof_id_type pmax_elem_id = mesh.max_elem_id();
+  mesh.comm().max(pmax_elem_id);
+
+  std::vector<unsigned char> my_elem_h_state(pmax_elem_id, 255);
+  std::vector<unsigned char> my_elem_p_state(pmax_elem_id, 255);
 
   const MeshBase::const_element_iterator el_end =
     mesh.elements_end();
@@ -1686,7 +1615,7 @@ void MeshTools::libmesh_assert_valid_refinement_flags(const MeshBase & mesh)
   std::vector<unsigned char> min_elem_p_state(my_elem_p_state);
   mesh.comm().min(min_elem_p_state);
 
-  for (dof_id_type i=0; i!= mesh.max_elem_id(); ++i)
+  for (dof_id_type i=0; i!= pmax_elem_id; ++i)
     {
       libmesh_assert(my_elem_h_state[i] == 255 ||
                      my_elem_h_state[i] == min_elem_h_state[i]);
@@ -1760,7 +1689,10 @@ void MeshTools::libmesh_assert_valid_neighbors(const MeshBase & mesh,
 
   libmesh_parallel_only(mesh.comm());
 
-  for (dof_id_type i=0; i != mesh.max_elem_id(); ++i)
+  dof_id_type pmax_elem_id = mesh.max_elem_id();
+  mesh.comm().max(pmax_elem_id);
+
+  for (dof_id_type i=0; i != pmax_elem_id; ++i)
     {
       const Elem * elem = mesh.query_elem_ptr(i);
 

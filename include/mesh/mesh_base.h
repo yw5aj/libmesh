@@ -44,7 +44,6 @@ class Elem;
 class GhostingFunctor;
 class Node;
 class Point;
-class MeshData;
 
 template <class MT>
 class MeshInput;
@@ -403,7 +402,9 @@ public:
    * This method is deprecated; use the less confusingly-named
    * node_ref() instead.
    */
-  virtual const Node & node (const dof_id_type i) const {
+  virtual const Node & node (const dof_id_type i) const
+  {
+    libmesh_deprecated();
     return *this->node_ptr(i);
   }
 
@@ -414,7 +415,9 @@ public:
    * This method is deprecated; use the less confusingly-named
    * node_ref() instead.
    */
-  virtual Node & node (const dof_id_type i) {
+  virtual Node & node (const dof_id_type i)
+  {
+    libmesh_deprecated();
     return *this->node_ptr(i);
   }
 
@@ -480,7 +483,9 @@ public:
    * This method is deprecated; use the less confusingly-named
    * elem_ptr() instead.
    */
-  virtual const Elem * elem (const dof_id_type i) const {
+  virtual const Elem * elem (const dof_id_type i) const
+  {
+    libmesh_deprecated();
     return this->elem_ptr(i);
   }
 
@@ -492,7 +497,9 @@ public:
    * This method is deprecated; use the less confusingly-named
    * elem_ptr() instead.
    */
-  virtual Elem * elem (const dof_id_type i) {
+  virtual Elem * elem (const dof_id_type i)
+  {
+    libmesh_deprecated();
     return this->elem_ptr(i);
   }
 
@@ -515,7 +522,9 @@ public:
    * This method is deprecated; use the less confusingly-named
    * query_elem_ptr() instead.
    */
-  virtual const Elem * query_elem (const dof_id_type i) const {
+  virtual const Elem * query_elem (const dof_id_type i) const
+  {
+    libmesh_deprecated();
     return this->query_elem_ptr(i);
   }
 
@@ -526,7 +535,9 @@ public:
    * This method is deprecated; use the less confusingly-named
    * query_elem_ptr() instead.
    */
-  virtual Elem * query_elem (const dof_id_type i) {
+  virtual Elem * query_elem (const dof_id_type i)
+  {
+    libmesh_deprecated();
     return this->query_elem_ptr(i);
   }
 
@@ -811,10 +822,10 @@ public:
    * implemented in derived classes.
    */
   virtual void read  (const std::string & name,
-                      MeshData * mesh_data=libmesh_nullptr,
+                      void * mesh_data=libmesh_nullptr,
                       bool skip_renumber_nodes_and_elements=false,
                       bool skip_find_neighbors=false) = 0;
-  virtual void write (const std::string & name, MeshData * mesh_data=libmesh_nullptr) = 0;
+  virtual void write (const std::string & name) = 0;
 
   /**
    * Converts a mesh with higher-order

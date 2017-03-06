@@ -36,7 +36,6 @@ namespace libMesh
 
 // Forward declarations
 class MeshBase;
-class MeshData;
 
 /**
  * The \p UNVIO class implements the Ideas \p UNV universal
@@ -60,13 +59,13 @@ public:
    * Constructor.  Takes a writeable reference to a mesh object.
    * This is the constructor required to read a mesh.
    */
-  UNVIO (MeshBase & mesh, MeshData * mesh_data = libmesh_nullptr);
+  UNVIO (MeshBase & mesh);
 
   /**
    * Constructor.  Takes a reference to a constant mesh object.
    * This constructor will only allow us to write the mesh.
    */
-  UNVIO (const MeshBase & mesh, MeshData * mesh_data = libmesh_nullptr);
+  UNVIO (const MeshBase & mesh);
 
   /**
    * Destructor.
@@ -88,6 +87,19 @@ public:
    */
   bool & verbose ();
 
+  /**
+   * Read a UNV data file containing a dataset of type "2414".
+   * For more info, see http://tinyurl.com/htcf6zm
+   */
+  void read_dataset(std::string file_name);
+
+  /**
+   * @returns a pointer the values associated with the node \p node,
+   * as read in by the read_dataset() method.  If no values exist for
+   * the node in question, a libmesh_nullptr is returned instead.  It
+   * is up to the user to check the return value before using it.
+   */
+  const std::vector<Number> * get_data (Node * node) const;
 
 private:
 
@@ -118,8 +130,7 @@ private:
    * Method reads elements and stores them in
    * \p std::vector<Elem *> \p _elements in the same order as they
    * come in. Within \p UNVIO, element labels are
-   * ignored, but \p MeshData takes care of such things
-   * (if active).
+   * ignored.
    */
   void elements_in (std::istream & in_file);
 
@@ -133,18 +144,14 @@ private:
   // write support methods
 
   /**
-   * Outputs nodes to the file \p out_file.
-   * For this to work, the \p MeshData of the current
-   * \p MeshBase has to be active.  Do not use this directly,
+   * Outputs nodes to the file \p out_file.  Do not use this directly,
    * but through the proper write method.
    */
   void nodes_out (std::ostream & out_file);
 
   /**
-   * Outputs the element data to the file \p out_file.
-   * For this to work, the \p MeshData of the current
-   * \p Mesh has to be active. Do not use this directly,
-   * but through the proper write method.
+   * Outputs the element data to the file \p out_file. Do not use this
+   * directly, but through the proper write method.
    */
   void elements_out (std::ostream & out_file);
 
@@ -155,6 +162,14 @@ private:
    */
   unsigned char max_elem_dimension_seen ();
 
+  /**
+   * Replaces "1.1111D+00" with "1.1111e+00" if necessary.  Returns
+   * true if the replacement occurs, false otherwise.  This function
+   * only needs to be called once per stream, one can assume that if
+   * one number needs rewriting, they all do.
+   */
+  bool need_D_to_e (std::string & number);
+
   //-------------------------------------------------------------
   // local data
 
@@ -164,9 +179,10 @@ private:
   bool _verbose;
 
   /**
-   * maps node IDs from UNV to internal.  Used when reading.
+   * Maps UNV node IDs to libMesh Node*s. Used when reading. Even if the
+   * libMesh Mesh is renumbered, this map should continue to be valid.
    */
-  std::map<unsigned, unsigned> _unv_node_id_to_libmesh_node_id;
+  std::map<dof_id_type, Node *> _unv_node_id_to_libmesh_node_ptr;
 
   /**
    * label for the node dataset
@@ -184,20 +200,15 @@ private:
   static const std::string _groups_dataset_label;
 
   /**
-   * A pointer to the MeshData object you would like to use.
-   * with this UNVIO object.  Can be NULL.
-   */
-  MeshData * _mesh_data;
-
-  /**
-   * Map libmesh element IDs to UNV element IDs.
-   */
-  // std::vector<unsigned> _libmesh_elem_id_to_unv_elem_id;
-
-  /**
    * Map UNV element IDs to libmesh element IDs.
    */
   std::map<unsigned, unsigned> _unv_elem_id_to_libmesh_elem_id;
+
+  /**
+   * Map from libMesh Node* to data at that node, as read in by the
+   * read_dataset() function.
+   */
+  std::map<Node *, std::vector<Number> > _node_data;
 };
 
 

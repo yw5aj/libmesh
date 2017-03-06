@@ -39,10 +39,6 @@
 // For most I/O
 #include "libmesh/namebased_io.h"
 
-// for MeshData backward compatibility
-#include "libmesh/unv_io.h"
-#include "libmesh/tetgen_io.h"
-
 #include LIBMESH_INCLUDE_UNORDERED_MAP
 
 
@@ -65,6 +61,7 @@ UnstructuredMesh::UnstructuredMesh (const Parallel::Communicator & comm_in,
 UnstructuredMesh::UnstructuredMesh (unsigned char d) :
   MeshBase (d)
 {
+  libmesh_deprecated();
   libmesh_assert (libMesh::initialized());
 }
 #endif
@@ -575,7 +572,7 @@ void UnstructuredMesh::find_neighbors (const bool reset_remote_elements,
 
 
 void UnstructuredMesh::read (const std::string & name,
-                             MeshData * mesh_data,
+                             void *,
                              bool skip_renumber_nodes_and_elements,
                              bool skip_find_neighbors)
 {
@@ -588,17 +585,7 @@ void UnstructuredMesh::read (const std::string & name,
   if (name.rfind(".gmv") + 4 == name.size())
     this->allow_renumbering(false);
 
-  if (mesh_data)
-    {
-      libmesh_deprecated();
-      if (name.rfind(".unv") < name.size())
-        UNVIO(*this, mesh_data).read (name);
-      else if ((name.rfind(".node")  < name.size()) ||
-               (name.rfind(".ele")   < name.size()))
-        TetGenIO(*this,mesh_data).read (name);
-    }
-  else
-    NameBasedIO(*this).read(name);
+  NameBasedIO(*this).read(name);
 
   if (skip_renumber_nodes_and_elements)
     {
@@ -614,19 +601,9 @@ void UnstructuredMesh::read (const std::string & name,
 
 
 
-void UnstructuredMesh::write (const std::string & name,
-                              MeshData * mesh_data)
+void UnstructuredMesh::write (const std::string & name)
 {
   LOG_SCOPE("write()", "Mesh");
-
-  if (mesh_data)
-    {
-      libmesh_deprecated();
-      if (name.rfind(".unv") < name.size())
-        UNVIO(*this, mesh_data).write (name);
-      else
-        libmesh_error_msg("Only UNV output supports MeshData");
-    }
 
   NameBasedIO(*this).write(name);
 }

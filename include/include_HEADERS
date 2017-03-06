@@ -100,6 +100,7 @@ include_HEADERS =  \
         fe/inf_fe_instantiate_2D.h \
         fe/inf_fe_instantiate_3D.h \
         fe/inf_fe_macro.h \
+        geom/bounding_box.h \
         geom/cell.h \
         geom/cell_hex.h \
         geom/cell_hex20.h \
@@ -176,7 +177,6 @@ include_HEADERS =  \
         mesh/mesh.h \
         mesh/mesh_base.h \
         mesh/mesh_communication.h \
-        mesh/mesh_data.h \
         mesh/mesh_function.h \
         mesh/mesh_generation.h \
         mesh/mesh_input.h \

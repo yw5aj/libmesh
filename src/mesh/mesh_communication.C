@@ -1331,14 +1331,14 @@ struct SyncNodeIds
                     std::vector<datum> & new_ids)
   {
     bool data_changed = false;
-    for (unsigned int i=0; i != old_ids.size(); ++i)
+    for (std::size_t i=0; i != old_ids.size(); ++i)
       {
         const dof_id_type new_id = new_ids[i];
         if (new_id != DofObject::invalid_id)
           {
             const dof_id_type old_id = old_ids[i];
 
-            Node *node = mesh.query_node_ptr(old_id);
+            Node * node = mesh.query_node_ptr(old_id);
 
             // If we can't find the node we were asking about, another
             // processor must have already given us the definitive id
@@ -1890,6 +1890,10 @@ MeshCommunication::delete_remote_elements (DistributedMesh & mesh,
   // If we had a point locator, it's invalid now that some of the
   // elements it pointed to have been deleted.
   mesh.clear_point_locator();
+
+  // Much of our boundary info may have been for now-remote parts of
+  // the mesh, in which case we don't want to keep local copies.
+  mesh.get_boundary_info().regenerate_id_sets();
 
   // We now have all remote elements and nodes deleted; our ghosting
   // functors should be ready to delete any now-redundant cached data

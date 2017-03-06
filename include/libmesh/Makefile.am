@@ -89,6 +89,7 @@ BUILT_SOURCES = \
         inf_fe_instantiate_2D.h \
         inf_fe_instantiate_3D.h \
         inf_fe_macro.h \
+        bounding_box.h \
         cell.h \
         cell_hex.h \
         cell_hex20.h \
@@ -166,7 +167,6 @@ BUILT_SOURCES = \
         mesh.h \
         mesh_base.h \
         mesh_communication.h \
-        mesh_data.h \
         mesh_function.h \
         mesh_generation.h \
         mesh_input.h \
@@ -775,6 +775,9 @@ inf_fe_instantiate_3D.h: $(top_srcdir)/include/fe/inf_fe_instantiate_3D.h
 inf_fe_macro.h: $(top_srcdir)/include/fe/inf_fe_macro.h
 	$(AM_V_GEN)rm -f $@ && $(LN_S) -f $< $@
 
+bounding_box.h: $(top_srcdir)/include/geom/bounding_box.h
+	$(AM_V_GEN)rm -f $@ && $(LN_S) -f $< $@
+
 cell.h: $(top_srcdir)/include/geom/cell.h
 	$(AM_V_GEN)rm -f $@ && $(LN_S) -f $< $@
 
@@ -1004,9 +1007,6 @@ mesh_base.h: $(top_srcdir)/include/mesh/mesh_base.h
 	$(AM_V_GEN)rm -f $@ && $(LN_S) -f $< $@
 
 mesh_communication.h: $(top_srcdir)/include/mesh/mesh_communication.h
-	$(AM_V_GEN)rm -f $@ && $(LN_S) -f $< $@
-
-mesh_data.h: $(top_srcdir)/include/mesh/mesh_data.h
 	$(AM_V_GEN)rm -f $@ && $(LN_S) -f $< $@
 
 mesh_function.h: $(top_srcdir)/include/mesh/mesh_function.h
