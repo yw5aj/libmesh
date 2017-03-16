@@ -27,7 +27,6 @@
 #include "libmesh/enum_elem_type.h"
 #include "libmesh/libmesh_common.h"
 #include "libmesh/multi_predicates.h"
-#include "libmesh/partitioner.h" // UniquePtr needs a real declaration
 #include "libmesh/point_locator_base.h"
 #include "libmesh/variant_filter_iterator.h"
 #include "libmesh/parallel_object.h"
@@ -44,6 +43,7 @@ class Elem;
 class GhostingFunctor;
 class Node;
 class Point;
+class Partitioner;
 
 template <class MT>
 class MeshInput;
@@ -1037,18 +1037,21 @@ public:
    * distributed by the given DofMap) can be evaluated, for the given
    * variable var_num, or for all variables by default.
    */
-  virtual element_iterator evaluable_elements_begin
-    (const DofMap & dof_map,
-     unsigned int var_num = libMesh::invalid_uint) = 0;
-  virtual element_iterator evaluable_elements_end
-    (const DofMap & dof_map,
-     unsigned int var_num = libMesh::invalid_uint) = 0;
-  virtual const_element_iterator evaluable_elements_begin
-    (const DofMap & dof_map,
-     unsigned int var_num = libMesh::invalid_uint) const = 0;
-  virtual const_element_iterator evaluable_elements_end
-    (const DofMap & dof_map,
-     unsigned int var_num = libMesh::invalid_uint) const = 0;
+  virtual element_iterator
+  evaluable_elements_begin (const DofMap & dof_map,
+                            unsigned int var_num = libMesh::invalid_uint) = 0;
+
+  virtual element_iterator
+  evaluable_elements_end (const DofMap & dof_map,
+                          unsigned int var_num = libMesh::invalid_uint) = 0;
+
+  virtual const_element_iterator
+  evaluable_elements_begin (const DofMap & dof_map,
+                            unsigned int var_num = libMesh::invalid_uint) const = 0;
+
+  virtual const_element_iterator
+  evaluable_elements_end (const DofMap & dof_map,
+                          unsigned int var_num = libMesh::invalid_uint) const = 0;
 
 #ifdef LIBMESH_ENABLE_AMR
   /**
@@ -1107,6 +1110,11 @@ public:
   virtual element_iterator active_subdomain_elements_end (subdomain_id_type subdomain_id) = 0;
   virtual const_element_iterator active_subdomain_elements_begin (subdomain_id_type subdomain_id) const = 0;
   virtual const_element_iterator active_subdomain_elements_end (subdomain_id_type subdomain_id) const = 0;
+
+  virtual element_iterator active_subdomain_set_elements_begin (std::set<subdomain_id_type> ss) = 0;
+  virtual element_iterator active_subdomain_set_elements_end (std::set<subdomain_id_type> ss) = 0;
+  virtual const_element_iterator active_subdomain_set_elements_begin (std::set<subdomain_id_type> ss) const = 0;
+  virtual const_element_iterator active_subdomain_set_elements_end (std::set<subdomain_id_type> ss) const = 0;
 
   virtual element_iterator active_local_subdomain_elements_begin (subdomain_id_type subdomain_id) = 0;
   virtual element_iterator active_local_subdomain_elements_end (subdomain_id_type subdomain_id) = 0;
@@ -1215,18 +1223,21 @@ public:
    * distributed by the given DofMap) can be evaluated, for the given
    * variable var_num, or for all variables by default.
    */
-  virtual node_iterator evaluable_nodes_begin
-    (const DofMap & dof_map,
-     unsigned int var_num = libMesh::invalid_uint) = 0;
-  virtual node_iterator evaluable_nodes_end
-    (const DofMap & dof_map,
-     unsigned int var_num = libMesh::invalid_uint) = 0;
-  virtual const_node_iterator evaluable_nodes_begin
-    (const DofMap & dof_map,
-     unsigned int var_num = libMesh::invalid_uint) const = 0;
-  virtual const_node_iterator evaluable_nodes_end
-    (const DofMap & dof_map,
-     unsigned int var_num = libMesh::invalid_uint) const = 0;
+  virtual node_iterator
+  evaluable_nodes_begin (const DofMap & dof_map,
+                         unsigned int var_num = libMesh::invalid_uint) = 0;
+
+  virtual node_iterator
+  evaluable_nodes_end (const DofMap & dof_map,
+                       unsigned int var_num = libMesh::invalid_uint) = 0;
+
+  virtual const_node_iterator
+  evaluable_nodes_begin (const DofMap & dof_map,
+                         unsigned int var_num = libMesh::invalid_uint) const = 0;
+
+  virtual const_node_iterator
+  evaluable_nodes_end (const DofMap & dof_map,
+                       unsigned int var_num = libMesh::invalid_uint) const = 0;
 
   /**
    * Return a writeable reference to the whole subdomain name map

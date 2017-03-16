@@ -272,6 +272,7 @@ BUILT_SOURCES = \
         centroid_partitioner.h \
         hilbert_sfc_partitioner.h \
         linear_partitioner.h \
+        mapped_subdomain_partitioner.h \
         metis_csr_graph.h \
         metis_partitioner.h \
         morton_sfc_partitioner.h \
@@ -279,6 +280,7 @@ BUILT_SOURCES = \
         parmetis_partitioner.h \
         partitioner.h \
         sfc_partitioner.h \
+        subdomain_partitioner.h \
         diff_physics.h \
         diff_qoi.h \
         fem_physics.h \
@@ -1324,6 +1326,9 @@ hilbert_sfc_partitioner.h: $(top_srcdir)/include/partitioning/hilbert_sfc_partit
 linear_partitioner.h: $(top_srcdir)/include/partitioning/linear_partitioner.h
 	$(AM_V_GEN)rm -f $@ && $(LN_S) -f $< $@
 
+mapped_subdomain_partitioner.h: $(top_srcdir)/include/partitioning/mapped_subdomain_partitioner.h
+	$(AM_V_GEN)rm -f $@ && $(LN_S) -f $< $@
+
 metis_csr_graph.h: $(top_srcdir)/include/partitioning/metis_csr_graph.h
 	$(AM_V_GEN)rm -f $@ && $(LN_S) -f $< $@
 
@@ -1343,6 +1348,9 @@ partitioner.h: $(top_srcdir)/include/partitioning/partitioner.h
 	$(AM_V_GEN)rm -f $@ && $(LN_S) -f $< $@
 
 sfc_partitioner.h: $(top_srcdir)/include/partitioning/sfc_partitioner.h
+	$(AM_V_GEN)rm -f $@ && $(LN_S) -f $< $@
+
+subdomain_partitioner.h: $(top_srcdir)/include/partitioning/subdomain_partitioner.h
 	$(AM_V_GEN)rm -f $@ && $(LN_S) -f $< $@
 
 diff_physics.h: $(top_srcdir)/include/physics/diff_physics.h

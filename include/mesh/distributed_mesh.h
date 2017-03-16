@@ -186,9 +186,11 @@ public:
   virtual void delete_remote_elements() libmesh_override;
 
   /**
-   * Inserts the element _and_ adds it to a list of elements not to
-   * get deleted by delete_remote_elements.  This is handy for inserting
-   * off-processor elements that you want to keep track of on this processor.
+   * Inserts the element _and_ adds it to a list of elements that
+   * should not get deleted or have their descendants deleted by
+   * delete_remote_elements.  This is handy for inserting otherwise
+   * off-processor elements that you want to keep track of on this
+   * processor.
    */
   virtual void add_extra_ghost_elem(Elem * e);
 
@@ -395,23 +397,31 @@ public:
   virtual const_element_iterator active_subdomain_elements_begin (subdomain_id_type subdomain_id) const libmesh_override;
   virtual const_element_iterator active_subdomain_elements_end (subdomain_id_type subdomain_id) const libmesh_override;
 
+  virtual element_iterator active_subdomain_set_elements_begin (std::set<subdomain_id_type> ss) libmesh_override;
+  virtual element_iterator active_subdomain_set_elements_end (std::set<subdomain_id_type> ss) libmesh_override;
+  virtual const_element_iterator active_subdomain_set_elements_begin (std::set<subdomain_id_type> ss) const libmesh_override;
+  virtual const_element_iterator active_subdomain_set_elements_end (std::set<subdomain_id_type> ss) const libmesh_override;
+
   virtual element_iterator ghost_elements_begin () libmesh_override;
   virtual element_iterator ghost_elements_end () libmesh_override;
   virtual const_element_iterator ghost_elements_begin () const libmesh_override;
   virtual const_element_iterator ghost_elements_end () const libmesh_override;
 
-  virtual element_iterator evaluable_elements_begin
-    (const DofMap & dof_map,
-     unsigned int var_num = libMesh::invalid_uint) libmesh_override;
-  virtual element_iterator evaluable_elements_end
-    (const DofMap & dof_map,
-     unsigned int var_num = libMesh::invalid_uint) libmesh_override;
-  virtual const_element_iterator evaluable_elements_begin
-    (const DofMap & dof_map,
-     unsigned int var_num = libMesh::invalid_uint) const libmesh_override;
-  virtual const_element_iterator evaluable_elements_end
-    (const DofMap & dof_map,
-     unsigned int var_num = libMesh::invalid_uint) const libmesh_override;
+  virtual element_iterator
+  evaluable_elements_begin (const DofMap & dof_map,
+                            unsigned int var_num = libMesh::invalid_uint) libmesh_override;
+
+  virtual element_iterator
+  evaluable_elements_end (const DofMap & dof_map,
+                          unsigned int var_num = libMesh::invalid_uint) libmesh_override;
+
+  virtual const_element_iterator
+  evaluable_elements_begin (const DofMap & dof_map,
+                            unsigned int var_num = libMesh::invalid_uint) const libmesh_override;
+
+  virtual const_element_iterator
+  evaluable_elements_end (const DofMap & dof_map,
+                          unsigned int var_num = libMesh::invalid_uint) const libmesh_override;
 
 #ifdef LIBMESH_ENABLE_AMR
   virtual element_iterator flagged_elements_begin (unsigned char rflag) libmesh_override;

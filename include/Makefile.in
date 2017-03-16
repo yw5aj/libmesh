@@ -846,12 +846,14 @@ include_HEADERS = \
         partitioning/centroid_partitioner.h \
         partitioning/hilbert_sfc_partitioner.h \
         partitioning/linear_partitioner.h \
+        partitioning/mapped_subdomain_partitioner.h \
         partitioning/metis_csr_graph.h \
         partitioning/metis_partitioner.h \
         partitioning/morton_sfc_partitioner.h \
         partitioning/parmetis_partitioner.h \
         partitioning/partitioner.h \
         partitioning/sfc_partitioner.h \
+        partitioning/subdomain_partitioner.h \
         physics/diff_physics.h \
         physics/diff_qoi.h \
         physics/fem_physics.h \

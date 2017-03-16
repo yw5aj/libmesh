@@ -26,6 +26,7 @@
 
 // C++ includes
 #include <vector>
+#include <set>
 
 namespace libMesh
 {
@@ -411,6 +412,24 @@ protected:
 };
 
 
+// The subdomain_set predicate returns true if the pointer's
+// subdomain id is in the provided std::set<subdomain_id_type>.
+template <typename T>
+struct subdomain_set : predicate<T>
+{
+  // Constructor
+  subdomain_set(std::set<subdomain_id_type> sset) : _subdomain_set(sset) {}
+  virtual ~subdomain_set() {}
+
+  // op()
+  virtual bool operator()(const T & it) const libmesh_override { return _subdomain_set.count((*it)->subdomain_id()); }
+
+protected:
+  virtual predicate<T> * clone() const libmesh_override { return new subdomain_set<T>(*this); }
+  const std::set<subdomain_id_type> _subdomain_set;
+};
+
+
 // The evaluable predicate returns true if the pointer (which must be
 // a local element) has degrees of freedom which can be evaluated for
 // the specified DofMap and variable.
@@ -420,7 +439,7 @@ struct evaluable : predicate<T>
   // Constructor
   evaluable(const DofMap & dof_map,
             unsigned int var_num) :
-            _dof_map(dof_map), _var_num(var_num) {}
+    _dof_map(dof_map), _var_num(var_num) {}
   virtual ~evaluable() {}
 
   // op()

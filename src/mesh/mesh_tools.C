@@ -178,7 +178,7 @@ public:
 #endif
                );
 
-    const MeshTools::BoundingBox ret_val(pmin, pmax);
+    const BoundingBox ret_val(pmin, pmax);
 
     return ret_val;
   }
@@ -190,7 +190,8 @@ private:
 
 #ifdef DEBUG
 void assert_semiverify_dofobj(const Parallel::Communicator & communicator,
-                              const DofObject * d)
+                              const DofObject * d,
+                              unsigned int sysnum = libMesh::invalid_uint)
 {
   if (d)
     {
@@ -198,7 +199,9 @@ void assert_semiverify_dofobj(const Parallel::Communicator & communicator,
 
       std::vector<unsigned int> n_vars (n_sys, 0);
       for (unsigned int s = 0; s != n_sys; ++s)
-        n_vars[s] = d->n_vars(s);
+        if (sysnum == s ||
+            sysnum == libMesh::invalid_uint)
+          n_vars[s] = d->n_vars(s);
 
       const unsigned int tot_n_vars =
         std::accumulate(n_vars.begin(), n_vars.end(), 0);
@@ -207,11 +210,17 @@ void assert_semiverify_dofobj(const Parallel::Communicator & communicator,
       std::vector<dof_id_type> first_dof (tot_n_vars, 0);
 
       for (unsigned int s = 0, i=0; s != n_sys; ++s)
-        for (unsigned int v = 0; v != n_vars[s]; ++v, ++i)
-          {
-            n_comp[i] = d->n_comp(s,v);
-            first_dof[i] = n_comp[i] ? d->dof_number(s,v,0) : DofObject::invalid_id;
-          }
+        {
+          if (sysnum != s &&
+              sysnum != libMesh::invalid_uint)
+            continue;
+
+          for (unsigned int v = 0; v != n_vars[s]; ++v, ++i)
+            {
+              n_comp[i] = d->n_comp(s,v);
+              first_dof[i] = n_comp[i] ? d->dof_number(s,v,0) : DofObject::invalid_id;
+            }
+        }
 
       libmesh_assert(communicator.semiverify(&n_sys));
       libmesh_assert(communicator.semiverify(&n_vars));
@@ -1322,7 +1331,7 @@ void libmesh_assert_valid_boundary_ids(const MeshBase & mesh)
     }
 }
 
-void libmesh_assert_valid_dof_ids(const MeshBase & mesh)
+void libmesh_assert_valid_dof_ids(const MeshBase & mesh, unsigned int sysnum)
 {
   if (mesh.n_processors() == 1)
     return;
@@ -1334,14 +1343,16 @@ void libmesh_assert_valid_dof_ids(const MeshBase & mesh)
 
   for (dof_id_type i=0; i != pmax_elem_id; ++i)
     assert_semiverify_dofobj(mesh.comm(),
-                             mesh.query_elem_ptr(i));
+                             mesh.query_elem_ptr(i),
+                             sysnum);
 
   dof_id_type pmax_node_id = mesh.max_node_id();
   mesh.comm().max(pmax_node_id);
 
   for (dof_id_type i=0; i != pmax_node_id; ++i)
     assert_semiverify_dofobj(mesh.comm(),
-                             mesh.query_node_ptr(i));
+                             mesh.query_node_ptr(i),
+                             sysnum);
 }
 
 
@@ -1839,8 +1850,10 @@ void MeshTools::correct_node_proc_ids (MeshBase & mesh)
   std::vector<std::vector<std::pair<dof_id_type, processor_id_type> > >
     ids_to_push(mesh.n_processors());
 
-  for (MeshBase::const_node_iterator n_it = mesh.nodes_begin(),
-       n_end = mesh.nodes_end(); n_it != n_end; ++n_it)
+  for (MeshBase::const_node_iterator
+         n_it = mesh.nodes_begin(),
+         n_end = mesh.nodes_end();
+       n_it != n_end; ++n_it)
     {
       const Node *node = *n_it;
       const dof_id_type id = node->id();
@@ -1898,8 +1911,10 @@ void MeshTools::correct_node_proc_ids (MeshBase & mesh)
   // first we'll need to keep track of which nodes we used to own,
   // lest we get them confused with nodes we newly own.
   LIBMESH_BEST_UNORDERED_SET<Node *> ex_local_nodes;
-  for (MeshBase::node_iterator n_it = mesh.local_nodes_begin(),
-       n_end = mesh.local_nodes_end(); n_it != n_end; ++n_it)
+  for (MeshBase::node_iterator
+         n_it = mesh.local_nodes_begin(),
+         n_end = mesh.local_nodes_end();
+       n_it != n_end; ++n_it)
     {
       Node *node = *n_it;
       const proc_id_map_type::iterator it = new_proc_ids.find(node->id());
@@ -1915,8 +1930,10 @@ void MeshTools::correct_node_proc_ids (MeshBase & mesh)
     (mesh.comm(), mesh.nodes_begin(), mesh.nodes_end(), sync);
 
   // And finally let's update the nodes we used to own.
-  for (LIBMESH_BEST_UNORDERED_SET<Node *>::iterator n_it = ex_local_nodes.begin(),
-       n_end = ex_local_nodes.end(); n_it != n_end; ++n_it)
+  for (LIBMESH_BEST_UNORDERED_SET<Node *>::iterator
+         n_it = ex_local_nodes.begin(),
+         n_end = ex_local_nodes.end();
+       n_it != n_end; ++n_it)
     {
       Node *node = *n_it;
       const dof_id_type id = node->id();

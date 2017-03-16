@@ -121,6 +121,7 @@ public:
   void testRefineThenReinitPreserveFlags()
   {
     Mesh mesh(*TestCommWorld);
+    mesh.allow_renumbering(false);
     EquationSystems es(mesh);
     System & sys = es.add_system<System> ("SimpleSystem");
     sys.add_variable("u", FIRST);
@@ -129,7 +130,7 @@ public:
 
     Elem * to_refine = mesh.query_elem_ptr(0);
     if (to_refine)
-      to_refine->set_refinement_flag(Elem::RefinementState::REFINE);
+      to_refine->set_refinement_flag(Elem::REFINE);
 
     MeshRefinement mr(mesh);
     mr.refine_elements();
@@ -137,17 +138,17 @@ public:
     es.reinit();
 
     if (mesh.query_elem_ptr(1))
-    CPPUNIT_ASSERT( mesh.elem(1)->active() );
+      CPPUNIT_ASSERT( mesh.elem_ptr(1)->active() );
 
     const Elem * elem = mesh.query_elem_ptr(0);
     if (elem)
       {
-        CPPUNIT_ASSERT_EQUAL( Elem::RefinementState::INACTIVE,elem->refinement_flag() );
+        CPPUNIT_ASSERT_EQUAL( Elem::INACTIVE,elem->refinement_flag() );
 
         for (unsigned int c=0; c<elem->n_children(); c++)
-          if (elem->child(c) != remote_elem)
-            CPPUNIT_ASSERT_EQUAL(Elem::RefinementState::JUST_REFINED,
-                                 elem->child(c)->refinement_flag());
+          if (elem->child_ptr(c) != remote_elem)
+            CPPUNIT_ASSERT_EQUAL(Elem::JUST_REFINED,
+                                 elem->child_ptr(c)->refinement_flag());
       }
   }
 
