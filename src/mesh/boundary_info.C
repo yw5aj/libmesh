@@ -1778,6 +1778,10 @@ BoundaryInfo::build_node_list() const
 void
 BoundaryInfo::build_node_list_from_side_list()
 {
+  // Clear the node data
+  _boundary_node_id.clear();
+  _node_boundary_ids.clear();
+
   // If we're on a distributed mesh, even the owner of a node is not
   // guaranteed to be able to properly assign its new boundary id(s)!
   // Nodal neighbors are not always ghosted, and a nodal neighbor
